@@ -16,7 +16,8 @@ public:
     
     virtual void OnDrawTraversedBefore(OH_Drawing_Canvas *canvas) override;
     virtual void OnDrawTraversedAfter(OH_Drawing_Canvas *canvas) override;
-    
+    void SaveDefinition(OH_Drawing_Canvas *canvas);
+    void ConcatMatrix(OH_Drawing_Canvas *canvas);
 };
 
 }

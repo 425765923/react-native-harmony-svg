@@ -155,8 +155,8 @@ struct SvgPatternAttribute {
     Dimension y; // y-axis default value
     Dimension width; // pattern area width default value
     Dimension height; // pattern area height default value
-    std::string patternUnits = "objectBoundingBox";
-    std::string patternContentUnits = "userSpaceOnUse";
+    int patternUnits;
+    int patternContentUnits;
     std::string patternTransform;
     Rect viewBox;
 };

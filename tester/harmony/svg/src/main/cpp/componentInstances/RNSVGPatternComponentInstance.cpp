@@ -30,8 +30,8 @@ void RNSVGPatternComponentInstance::onPropsChanged(SharedConcreteProps const &pr
     svgPattern->patternAttr_.y = SvgAttributesParser::ParseDimension(props->y);
     svgPattern->patternAttr_.width = SvgAttributesParser::ParseDimension(props->width);
     svgPattern->patternAttr_.height = SvgAttributesParser::ParseDimension(props->height);
-    svgPattern->patternAttr_.patternUnits = props->patternUnits == 1 ? "userSpaceOnUse" : "objectBoundingBox";
-    svgPattern->patternAttr_.patternContentUnits = props->patternContentUnits == 1 ? "userSpaceOnUse" : "objectBoundingBox";
+    svgPattern->patternAttr_.patternUnits = props->patternUnits;
+    svgPattern->patternAttr_.patternContentUnits = props->patternContentUnits;
     svgPattern->patternAttr_.viewBox = Rect(props->minX, props->minY, props->vbWidth, props->vbHeight);
 }
 
