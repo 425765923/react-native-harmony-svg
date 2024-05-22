@@ -12,5 +12,7 @@ add_library(rnoh_app SHARED
     "./PackageProvider.cpp"
     "${RNOH_CPP_DIR}/RNOHAppNapiBridge.cpp"
 )
+add_subdirectory("${OH_MODULES_DIR}/rnoh-webview/src/main/cpp" ./webview)
 target_link_libraries(rnoh_app PUBLIC rnoh)
 target_link_libraries(rnoh_app PUBLIC rnoh_svg)
+target_link_libraries(rnoh_app PUBLIC rnoh_webview)

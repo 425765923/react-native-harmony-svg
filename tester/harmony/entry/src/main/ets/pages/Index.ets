@@ -12,12 +12,19 @@ import {
 } from '@rnoh/react-native-openharmony';
 import font from '@ohos.font';
 import { createRNPackages } from '../RNPackagesFactory';
+import { WebView, WEB_VIEW } from "rnoh-webview"
 
 const arkTsComponentNames: Array<string> = ["SampleView", "GeneratedSampleView", "PropsDisplayer"];
 @Builder
 export function buildCustomRNComponent(ctx: ComponentBuilderContext) {
   // There seems to be a problem with the placement of ArkTS components in mixed mode. Nested Stack temporarily avoided.
   Stack(){
+     if (ctx.componentName === WEB_VIEW) {
+         WebView({
+             ctx: ctx.rnComponentContext,
+             tag: ctx.tag
+             })
+         }
   }
   .position({x:0, y: 0})
 
