@@ -1,75 +1,40 @@
-import React, {Component} from 'react';
+import React, { Component } from 'react';
 import {
-  Animated,
-  PanResponder,
-  TouchableWithoutFeedback,
-  View,
+  Image,
+    ScrollView
 } from 'react-native';
-import {G, Line, Path, Image, Svg, Circle} from 'react-native-svg';
+import { SvgCss } from 'react-native-svg';
 
-export default class SvgNativeMethods extends Component {
-  static title =
-    'Tap the shapes to render the Image below based on the base64-data of the Svg';
-  state = {
-    base64: null,
-  };
-  alert = () => {
-    console.log('PRESSED');
-    this.root?.toDataURL((base64: string) => {
-      console.log('back');
-      console.log(base64);
+const svgmsg = `<svg width="240" height="240" viewBox="0 0 240 240" fill="none"
+xmlns="http://www.w3.org/2000/svg">
+<circle cx="120" cy="120" r="120" fill="#FFECDE"/>
+<mask id="mask0_14651_25129" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="240">
+<rect width="240" height="240" rx="30" fill="#FF00DC"/>
+</mask>
+<g mask="url(#mask0_14651_25129)">
+<g filter="url(#filter0_d_14651_25129)">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M57.1418 157.143C57.1418 169.767 67.3753 180 79.999 180H159.999C172.623 180 182.856 169.767 182.856 157.143V97.1429H57.1418V157.143ZM57.1419 85.7143H182.856L169.147 68.5784C164.81 63.1563 158.243 60 151.299 60H88.699C81.7554 60 75.1882 63.1563 70.8506 68.5784L57.1419 85.7143ZM82.2853 147.429C78.4982 147.429 75.4281 150.499 75.4281 154.286C75.4281 158.073 78.4982 161.143 82.2853 161.143H116.571C120.358 161.143 123.428 158.073 123.428 154.286C123.428 150.499 120.358 147.429 116.571 147.429H82.2853Z" fill="url(#paint0_linear_14651_25129)"/>
+</g>
+</g>
+<defs>
+<linearGradient id="paint0_linear_14651_25129" x1="57.1418" y1="180" x2="177.032" y2="54.4397" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FF003A"/>
+<stop offset="1" stop-color="#FF0056"/>
+</linearGradient>
+</defs>
+</svg>`
 
-      this.setState({
-        base64,
-      });
-    },new Object());
-
-    console.log(this.circle?.isPointInFill({x: 100, y: 100}));
-    console.log(this.circle?.isPointInStroke({x: 200, y: 100}));
-    console.log(this.circle?.getTotalLength());
-    console.log(this.circle?.getPointAtLength(25));
-    console.log(this.circle?.getBBox({fill: true}));
-    console.log(this.circle?.getCTM());
-    console.log(this.circle?.getScreenCTM());
-  };
-  root?: Svg | null;
-  circle?: Circle | null;
-
-  render() {
-    return (
-      <View style={{margin:50}}>
-        <Svg
-          height="100"
-          width="150"
-          onPress={this.alert}
-          ref={(ele: Svg) => {
-            this.root = ele;
-          }}>
-          <G x="40" onPress={this.alert}>
-            <Circle
-              cx="32"
-              cy="32"
-              r="54.167"
-              fill="blue"
-              ref={ele => {
-                this.circle = ele;
-              }}
-            />
-            <Path
-              d="M55.192 27.87l-5.825-1.092a17.98 17.98 0 0 0-1.392-3.37l3.37-4.928c.312-.456.248-1.142-.143-1.532l-4.155-4.156c-.39-.39-1.076-.454-1.532-.143l-4.928 3.37a18.023 18.023 0 0 0-3.473-1.42l-1.086-5.793c-.103-.543-.632-.983-1.185-.983h-5.877c-.553 0-1.082.44-1.185.983l-1.096 5.85a17.96 17.96 0 0 0-3.334 1.393l-4.866-3.33c-.456-.31-1.142-.247-1.532.144l-4.156 4.156c-.39.39-.454 1.076-.143 1.532l3.35 4.896a18.055 18.055 0 0 0-1.37 3.33L8.807 27.87c-.542.103-.982.632-.982 1.185v5.877c0 .553.44 1.082.982 1.185l5.82 1.09a18.013 18.013 0 0 0 1.4 3.4l-3.31 4.842c-.313.455-.25 1.14.142 1.53l4.155 4.157c.39.39 1.076.454 1.532.143l4.84-3.313c1.04.563 2.146 1.02 3.3 1.375l1.096 5.852c.103.542.632.982 1.185.982h5.877c.553 0 1.082-.44 1.185-.982l1.086-5.796c1.2-.354 2.354-.82 3.438-1.4l4.902 3.353c.456.313 1.142.25 1.532-.142l4.155-4.154c.39-.39.454-1.076.143-1.532l-3.335-4.874a18.016 18.016 0 0 0 1.424-3.44l5.82-1.09c.54-.104.98-.633.98-1.186v-5.877c0-.553-.44-1.082-.982-1.185zM32 42.085c-5.568 0-10.083-4.515-10.083-10.086 0-5.568 4.515-10.084 10.083-10.084 5.57 0 10.086 4.516 10.086 10.083 0 5.57-4.517 10.085-10.086 10.085z"
-              fill="blue"
-            />
-          </G>
-        </Svg>
-        <View style={{width: 150, height: 100, borderWidth: 1, marginTop: 5}}>
-          {/* {this.state.base64 && (
-            <Image
-              source={{uri: `data:image/png;base64,${this.state.base64}`}}
-              style={{width: 150, height: 100}}
-            />
-          )} */}
-        </View>
-      </View>
-    );
-  }
+export default class VideoCell extends Component {
+    render = () => {
+        return (
+            <ScrollView>
+                {/* <SvgCss
+                    xml={svgmsg}
+                    width={240}
+                    height={240}
+                /> */}
+                <Image source={require('../assets/react-native-logo.png')}></Image>
+            </ScrollView>
+        )
+    }
 }
