@@ -27,6 +27,7 @@ import webview from '@ohos.web.webview';
 import { CallbackState, ShouldRequestUrl } from './ShouldRequestUrl';
 import { RNViewBase,RNViewBaseAttributeModifier,ViewDescriptorWrapperBase,RNComponentContext } from '@rnoh/react-native-openharmony';
 import Logger from './Logger'
+import {getFreeWebId,getNWeb,Data,onErrorReceiveEvent,onLoadInterceptEvent,onProgressChangeEvent} from './Common'
 
 export class WebViewNewSource {
   uri: string | Resource = ""
@@ -111,40 +112,15 @@ export struct WebView {
   // nestedScrollFlag: boolean = false;
   renderMode: RenderMode = RenderMode.SYNC_RENDER;
   @State private rnViewAttributeModifier: RNViewBaseAttributeModifier | undefined = undefined
-
+  private webNodeId:string|undefined = undefined
 
   aboutToAppear() {
     this.descriptor = this.ctx.descriptorRegistry.getDescriptor<WebViewViewDescriptor>(this.tag)
     this.unregisterDescriptorChangesListener = this.ctx.descriptorRegistry.subscribeToDescriptorChanges(this.tag,
       (newDescriptor) => {
         this.descriptor = (newDescriptor as WebViewViewDescriptor)
-        Logger.debug(TAG, `[RNOH] newDescriptor props uri, ${JSON.stringify(this.descriptor.props.newSource.uri)}`);
-        this.cacheMode = this.descriptor.props.cacheEnabled ? this.transCacheMode(this.descriptor.props.cacheMode) : CacheMode.Online;
-        this.javaScriptEnable = this.descriptor.props.javaScriptEnabled;
-        this.source = this.descriptor.props.newSource
-        if (this.html != "" && this.html != this.source.html) {
-          Logger.debug(TAG, "[RNOH] html is update")
-          this.html = this.source.html
-          if (this.controllerAttached) {
-            try {
-              this.controller.loadData(
-                this.source.html,
-                "text/html",
-                "UTF-8",
-                this.source.baseUrl,
-                " "
-              );
-            } catch (error) {
-              Logger.error(TAG, "error: " + error)
-            }
-          }
-        } else if (this.source.uri != "" && this.url != this.source.uri) {
-          Logger.debug(TAG, `[RNOH] newDescriptor props update uri: ` + this.source.uri);
-          this.url = this.source.uri
-          if (this.controllerAttached) {
-            this.controller.loadUrl(this.descriptor.props.newSource.uri)
-          }
-        }
+        Logger.debug(TAG,"update descriptor height: " + this.descriptor.layoutMetrics.frame.size.height + " width:" + this.descriptor.layoutMetrics.frame.size.width)
+        this.descriptorChangesCallback()
       }
     )
     webview.WebviewController.setWebDebuggingAccess(this.descriptor.props.webviewDebuggingEnabled)
@@ -153,9 +129,6 @@ export struct WebView {
     this.source = this.descriptor.props.newSource
     this.html = this.source.html
     this.url = this.source.uri;
-    // this.nestedScrollFlag = this.descriptor.props.nestedScrollEnabled;
-    // nestedScrollEnabled true表示可嵌套滚动，不需要自适应和web统一渲染，默认是false
-    // this.renderMode = this.nestedScrollFlag?RenderMode.ASYNC_RENDER:RenderMode.SYNC_RENDER
     this.registerCommandCallback()
     let descriptorWrapper = this.ctx.descriptorRegistry.findDescriptorWrapperByTag<ViewDescriptorWrapperBase>(this.descriptor.tag)
     if (!descriptorWrapper || !(descriptorWrapper instanceof ViewDescriptorWrapperBase)) {
@@ -164,8 +137,155 @@ export struct WebView {
     if (this.ctx instanceof RNComponentContext) {
       this.rnViewAttributeModifier = new RNViewBaseAttributeModifier(descriptorWrapper, this.ctx)
     }
-    // this.rnViewAttributeModifier = new RNViewBaseAttributeModifier(descriptorWrapper, this.ctx)
+    this.webNodeId = getFreeWebId()
+  }
 
+  descriptorChangesCallback(isForceUpdate:boolean = false){
+    Logger.debug(TAG, `[RNOH] newDescriptor props uri, ${JSON.stringify(this.descriptor.props.newSource.uri)}`);
+    this.cacheMode = this.descriptor.props.cacheEnabled ? this.transCacheMode(this.descriptor.props.cacheMode) : CacheMode.Online;
+    this.javaScriptEnable = this.descriptor.props.javaScriptEnabled;
+    this.source = this.descriptor.props.newSource
+    this.updateNode()
+
+    if ((this.html != "" && this.html != this.source.html) || (isForceUpdate && this.source.html)) {
+      Logger.debug(TAG, "[RNOH] html is update")
+      this.html = this.source.html
+      if (this.controllerAttached) {
+        try {
+          this.controller.loadData(
+            this.source.html,
+            "text/html",
+            "UTF-8",
+            this.source.baseUrl,
+            " "
+          );
+        } catch (error) {
+          Logger.error(TAG, "error: " + error)
+        }
+      }
+    } else if (this.source.uri != "" && this.url != this.source.uri || (isForceUpdate && this.source.uri)) {
+      Logger.debug(TAG, `[RNOH] newDescriptor props update uri: ` + this.source.uri);
+      this.url = this.source.uri
+      if (this.controllerAttached) {
+        setTimeout(()=>{
+          this.controller.loadUrl(this.descriptor.props.newSource.uri)
+        },100)
+      }
+    }
+  }
+
+  updateNode(){
+    let nodeParams = {
+      controller:this.controller ,
+      cacheMode:this.cacheMode,
+      descriptor:this.descriptor,
+      onProgressChange:(e:onProgressChangeEvent)=>this.onProgressChange(e),
+      onPageEnd:()=>this.onPageEnd(),
+      onErrorReceive:(e:onErrorReceiveEvent)=>this.onErrorReceive(e),
+      onLoadIntercept:(e:onLoadInterceptEvent)=>this.onLoadIntercept(e),
+      onControllerAttached:()=>this.onControllerAttached(),
+    } as Data
+    if (this.webNodeId) {
+      getNWeb(this.webNodeId)?.updateNode(nodeParams)
+    }
+  }
+
+  onProgressChange(event:onProgressChangeEvent):void {
+    Logger.debug(TAG, "[RNOH] event progress: " + event)
+    if (event) {
+      this.progress = event.newProgress
+      Logger.debug(TAG, "[RNOH] event progress: " + event.newProgress)
+    }
+  }
+
+  onPageEnd():void{
+    Logger.debug(TAG, "[RNOH] event onPageEnd ")
+    this.runInjectedJavaScript()
+    this.onLoadingFinish()
+  }
+
+  onErrorReceive(event:onErrorReceiveEvent):void{
+    Logger.debug(TAG, "[RNOH] event onErrorReceive ")
+    if (event) {
+      let errorInfo: string = event.error.getErrorInfo();
+      let errorCode: number = event.error.getErrorCode();
+      if (errorInfo == "ERR_INTERNET_DISCONNECTED" || errorInfo == "ERR_CACHE_MISS" || !event.request.isMainFrame()) {
+        Logger.debug(TAG, "[RNOH] ERR_INTERNET_DISCONNECTED:OR ERR_CACHE_MISS")
+        return
+      }
+      Logger.debug(TAG, "[RNOH] errorInfo:" + errorInfo)
+      Logger.debug(TAG, "[RNOH] errorCode:" + errorCode)
+      this.onLoadingError(errorCode, errorInfo)
+    }
+  }
+
+  onLoadIntercept(event:onLoadInterceptEvent):boolean{
+    if (!this.descriptor.props.shouldStartLoadWithRequestEnabled) {
+      Logger.debug(TAG, "[RNOH]:shouldStartLoadWithRequestEnabled:" + this.descriptor.props.shouldStartLoadWithRequestEnabled)
+      return false
+    }
+    if (this.source.html != undefined && this.source.html != '') {
+      Logger.debug(TAG, "[RNOH]: load html not intercept")
+      return false;
+    }
+    if (event.data.getRequestUrl() == this.source.uri || this.requestUrl != "") {
+      Logger.debug(TAG, "[RNOH] first load not intercept")
+      this.requestUrl = ""
+      return false
+    }
+    this.requestUrl = event.data.getRequestUrl()
+    let lockIdentifier = ShouldRequestUrl.getNewData();
+    this.lockIdentifier = lockIdentifier
+    Logger.debug(TAG, "[RNOH]:lockIdentifier:" + lockIdentifier)
+    ShouldRequestUrl.setCallBack(lockIdentifier, () => {
+      let data: CallbackState = ShouldRequestUrl.getValue(this.lockIdentifier);
+      let should: boolean = data == CallbackState.SHOULD_OVERRIDE
+      Logger.debug(TAG, "[RNOH] should:" + should)
+      ShouldRequestUrl.removeData(this.lockIdentifier)
+      this.lockIdentifier = ""
+      if (!should) {
+        this.controller.loadUrl(this.requestUrl)
+      } else {
+        this.requestUrl = ""
+      }
+    })
+    this.onShouldStartLoadCallFunction(Number(this.lockIdentifier), event.data)
+    return true
+  }
+
+  onControllerAttached():void{
+    Logger.debug(TAG, "[RNOH] onControllerAttached")
+    this.controllerAttached = true;
+    let baseUrl = this.source.baseUrl
+    let uri = this.source.uri
+    if (this.source.html != undefined && this.source.html != "") {
+      try {
+        this.controller.loadData(
+          this.source.html,
+          "text/html",
+          "UTF-8",
+          baseUrl,
+          " "
+        );
+      } catch (error) {
+        Logger.error(TAG, "error:" + error)
+      }
+    } else if (uri != undefined && uri != "") {
+      let header = this.source.headers;
+      if (header != undefined && header != "") {
+        let headers: Array<webview.WebHeader> = [];
+        JSON.parse(header,( key: string, value: string) => {
+          if(key && value){
+            headers.push({ headerKey: key, headerValue: value })
+          }
+          return undefined;
+        })
+        this.controller.loadUrl(uri, headers);
+      }
+    }
+    if (!this.hasRegisterJavaScriptProxy) {
+      this.registerPostMessage()
+    }
   }
 
   private registerPostMessage() {
@@ -219,6 +339,9 @@ export struct WebView {
       this.hasRegisterJavaScriptProxy = false
     } catch (error) {
       Logger.error(TAG, `[RNOH]Errorcode: ${error.code}, Message: ${error.message}`);
+    }
+    if (this.webNodeId) {
+      getNWeb(this.webNodeId)?.release()
     }
   }
 
@@ -375,122 +498,42 @@ export struct WebView {
   build() {
     // RNViewBase({ ctx: this.ctx, tag: this.tag }) {
     Stack() {
-      Web({ src: this.source.uri, controller: this.controller,renderMode: this.renderMode })
-        .width(this.descriptor.layoutMetrics.frame.size.width)
-        .height(this.descriptor.layoutMetrics.frame.size.height)
-        .constraintSize({ minHeight: 1 })
-        .backgroundColor(Color.Transparent)
-        .javaScriptAccess(this.javaScriptEnable)
-        .horizontalScrollBarAccess(this.descriptor.props.showsHorizontalScrollIndicator)
-        .verticalScrollBarAccess(this.descriptor.props.showsVerticalScrollIndicator)
-        .overviewModeAccess(this.descriptor.props.scalesPageToFit)
-        .textZoomRatio(this.descriptor.props.textZoom)
-        .cacheMode(this.cacheMode)
-        .domStorageAccess(this.descriptor.props.domStorageEnabled)
-        .zoomAccess(this.descriptor.props.scalesPageToFit)
-        .overScrollMode(OverScrollMode.NEVER)
-         // nestedScrollFlag 为true 表示可以在嵌套滚动中，web自己能滚动
-        // .layoutMode(this.nestedScrollFlag ? WebLayoutMode.NONE : WebLayoutMode.FIT_CONTENT)
-
-        // .nestedScroll(this.nestedScrollFlag ? {
-        //   scrollForward: NestedScrollMode.SELF_ONLY,
-        //   scrollBackward: NestedScrollMode.SELF_ONLY
-        // } : { scrollForward: NestedScrollMode.PARENT_FIRST, scrollBackward: NestedScrollMode.PARENT_FIRST })
-        // .overScrollMode(OverScrollMode.NEVER)
-        // .onSizeChange((event)=>{
-        //   Logger.debug(TAG, "[RNOH] event width: " + event.width + "[RNOH] event height: " + event.height)
-        // })
-        .onProgressChange((event) => {
-          if (event) {
-            this.progress = event.newProgress
-            Logger.debug(TAG, "[RNOH] event progress: " + event.newProgress)
-          }
-        })
-        .onPageEnd(() => {
-          Logger.debug(TAG, "[RNOH] onPageEnd")
-          this.runInjectedJavaScript()
-          this.onLoadingFinish()
-        })
-        .onErrorReceive((event) => {
-          if (event) {
-            let errorInfo: string = event.error.getErrorInfo();
-            let errorCode: number = event.error.getErrorCode();
-            if (errorInfo == "ERR_INTERNET_DISCONNECTED" || errorInfo == "ERR_CACHE_MISS" || !event.request.isMainFrame()) {
-              Logger.debug(TAG, "[RNOH] ERR_INTERNET_DISCONNECTED:OR ERR_CACHE_MISS")
-              return
+      if (this.webNodeId){
+        NodeContainer(getNWeb(this.webNodeId))
+          .height(this.descriptor.layoutMetrics.frame.size.width)
+          .width(this.descriptor.layoutMetrics.frame.size.width)
+          .onAppear(()=>{
+            if (this.webNodeId !== undefined) {
+              let controller = getNWeb(this.webNodeId)?.getController()
+              if (controller) {
+                this.controller = controller
+                this.controllerAttached = true;
+              }
             }
-            Logger.debug(TAG, "[RNOH] errorInfo:" + errorInfo)
-            Logger.debug(TAG, "[RNOH] errorCode:" + errorCode)
-            this.onLoadingError(errorCode, errorInfo)
-          }
-        })
-        .onLoadIntercept((event) => {
-          if (!this.descriptor.props.shouldStartLoadWithRequestEnabled) {
-            Logger.debug(TAG, "[RNOH]:shouldStartLoadWithRequestEnabled:" + this.descriptor.props.shouldStartLoadWithRequestEnabled)
-            return false
-          }
-          if (this.source.html != undefined && this.source.html != '') {
-            Logger.debug(TAG, "[RNOH]: load html not intercept")
-            return false;
-          }
-          if (event.data.getRequestUrl() == this.source.uri || this.requestUrl != "") {
-            Logger.debug(TAG, "[RNOH] first load not intercept")
-            this.requestUrl = ""
-            return false
-          }
-          this.requestUrl = event.data.getRequestUrl()
-          let lockIdentifier = ShouldRequestUrl.getNewData();
-          this.lockIdentifier = lockIdentifier
-          Logger.debug(TAG, "[RNOH]:lockIdentifier:" + lockIdentifier)
-          ShouldRequestUrl.setCallBack(lockIdentifier, () => {
-            let data: CallbackState = ShouldRequestUrl.getValue(this.lockIdentifier);
-            let should: boolean = data == CallbackState.SHOULD_OVERRIDE
-            Logger.debug(TAG, "[RNOH] should:" + should)
-            ShouldRequestUrl.removeData(this.lockIdentifier)
-            this.lockIdentifier = ""
-            if (!should) {
-              this.controller.loadUrl(this.requestUrl)
-            } else {
-              this.requestUrl = ""
-            }
+            this.descriptorChangesCallback(true)
           })
-          this.onShouldStartLoadCallFunction(Number(this.lockIdentifier), event.data)
-          return true
-        })
-        .onControllerAttached(() => {
-          this.controllerAttached = true;
-          Logger.debug(TAG, "[RNOH] onControllerAttached")
-          let baseUrl = this.source.baseUrl
-          let uri = this.source.uri
-          if (this.source.html != undefined && this.source.html != "") {
-            try {
-              this.controller.loadData(
-                this.source.html,
-                "text/html",
-                "UTF-8",
-                baseUrl,
-                " "
-              );
-            } catch (error) {
-              Logger.error(TAG, "error:" + error)
-            }
-          } else if (uri != undefined && uri != "") {
-            let header = this.source.headers;
-            if (header != undefined && header != "") {
-              let headers: Array<webview.WebHeader> = [];
-              JSON.parse(header,( key: string, value: string) => {
-                if(key && value){
-                  headers.push({ headerKey: key, headerValue: value })
-                }
-                return undefined;
-              })
-              this.controller.loadUrl(uri, headers);
-            }
-          }
-          if (!this.hasRegisterJavaScriptProxy) {
-            this.registerPostMessage()
-          }
-        })
+      }else {
+        Web({ src: this.source.uri, controller: this.controller,renderMode: this.renderMode })
+          .width(this.descriptor.layoutMetrics.frame.size.width)
+          .height(this.descriptor.layoutMetrics.frame.size.height)
+          .constraintSize({ minHeight: 1 })
+          .backgroundColor(Color.Transparent)
+          .javaScriptAccess(this.javaScriptEnable)
+          .horizontalScrollBarAccess(this.descriptor.props.showsHorizontalScrollIndicator)
+          .verticalScrollBarAccess(this.descriptor.props.showsVerticalScrollIndicator)
+          .overviewModeAccess(this.descriptor.props.scalesPageToFit)
+          .textZoomRatio(this.descriptor.props.textZoom)
+          .cacheMode(this.cacheMode)
+          .domStorageAccess(this.descriptor.props.domStorageEnabled)
+          .zoomAccess(this.descriptor.props.scalesPageToFit)
+          .overScrollMode(OverScrollMode.NEVER)
+          .onProgressChange((e:onProgressChangeEvent)=>this.onProgressChange(e))
+          .onPageEnd(()=>this.onPageEnd())
+          .onErrorReceive((e:onErrorReceiveEvent)=>this.onErrorReceive(e))
+          .onLoadIntercept((e)=>this.onLoadIntercept(e))
+          .onControllerAttached(()=>this.onControllerAttached())
+      }
+
     }
     .width(this.descriptor.layoutMetrics.frame.size.width)
     .height(this.descriptor.layoutMetrics.frame.size.height)

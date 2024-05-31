@@ -7,6 +7,6 @@
   "version": "1.0.0",
   "dependencies": {
     "@rnoh/react-native-openharmony-svg": "file:../svg",
-    "rnoh-webview": "file:../rn_webview"
+    "rnoh-webview": "file:../rn_webview",
   }
 }

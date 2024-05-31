@@ -22,5 +22,6 @@
  * SOFTWARE.
  */
 
-export * from './src/main/ets/WebView1'
+export * from './src/main/ets/WebView'
+export * from './src/main/ets/Common'
 export * from './ts'
