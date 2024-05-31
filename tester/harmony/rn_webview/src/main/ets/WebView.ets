@@ -220,6 +220,8 @@ export struct WebView {
   }
 
   onLoadIntercept(event:onLoadInterceptEvent):boolean{
+    Logger.debug(TAG, "[RNOH]:onLoadIntercept:" )
+
     if (!this.descriptor.props.shouldStartLoadWithRequestEnabled) {
       Logger.debug(TAG, "[RNOH]:shouldStartLoadWithRequestEnabled:" + this.descriptor.props.shouldStartLoadWithRequestEnabled)
       return false
@@ -510,6 +512,7 @@ export struct WebView {
                 this.controllerAttached = true;
               }
             }
+            this.onControllerAttached()
             this.descriptorChangesCallback(true)
           })
       }else {

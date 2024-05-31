@@ -19,6 +19,7 @@ export interface onLoadInterceptEvent {
 }
 // @Builder中为动态组件的具体组件内容
 // Data为入参封装类
+@Observed
 export class Data{
   controller: WebviewController = new web_webview.WebviewController();
   descriptor:WebViewViewDescriptor | undefined = undefined
@@ -32,46 +33,58 @@ export class Data{
 
 @Builder
 function WebBuilder(data:Data) {
-  Web({ src: "", controller: data.controller,renderMode: RenderMode.SYNC_RENDER })
-    .width(data.descriptor?.layoutMetrics.frame.size.width ?? 0)
-    .height(data.descriptor?.layoutMetrics.frame.size.height ?? 0)
-    .constraintSize({ minHeight: 1 })
-    .backgroundColor(Color.Transparent)
-    .javaScriptAccess(data.descriptor?.props.javaScriptEnabled)
-    .horizontalScrollBarAccess(data.descriptor?.props.showsHorizontalScrollIndicator)
-    .verticalScrollBarAccess(data.descriptor?.props.showsVerticalScrollIndicator)
-    .overviewModeAccess(data.descriptor?.props.scalesPageToFit)
-    .textZoomRatio(data.descriptor?.props.textZoom)
-    .cacheMode(data.cacheMode)
-    .domStorageAccess(data.descriptor?.props.domStorageEnabled)
-    .zoomAccess(data.descriptor?.props.scalesPageToFit)
-    .overScrollMode(OverScrollMode.NEVER)
-    .onProgressChange(
-      (e:onProgressChangeEvent)=>{
-        Logger.debug("ljc","web onProgressChange")
-        data.onProgressChange?.(e)
-        // data.onPageEnd()
-        // data.onErrorReceive()
-        // data.onControllerAttached()
-      }
-    )
-    .onPageEnd(
-      (e)=>{
-        Logger.debug("ljc","web onPageEnd")
-        data.onPageEnd?.()
-      }
-    )
-    .onErrorReceive((e:onErrorReceiveEvent)=>{
-      Logger.debug("ljc","web onErrorReceive")
-      data.onErrorReceive?.(e)
-    }
-    )
-    .onLoadIntercept((e:onLoadInterceptEvent)=>{
-      Logger.debug("ljc","web onErrorReceive")
-      return data.onLoadIntercept?.(e)
-    })
-    .onControllerAttached(data.onControllerAttached)
+  WebNode({ dataRnWeb:data })
 }
+
+@Component
+struct WebNode{
+  @ObjectLink dataRnWeb: Data
+  build(){
+    Web({ src: "", controller: this.dataRnWeb.controller,renderMode: RenderMode.SYNC_RENDER })
+      .width(this.dataRnWeb.descriptor?.layoutMetrics.frame.size.width ?? 0)
+      .height(this.dataRnWeb.descriptor?.layoutMetrics.frame.size.height ?? 0)
+      .constraintSize({ minHeight: 1 })
+      .backgroundColor(Color.Transparent)
+      .javaScriptAccess(this.dataRnWeb.descriptor?.props.javaScriptEnabled)
+      .horizontalScrollBarAccess(this.dataRnWeb.descriptor?.props.showsHorizontalScrollIndicator)
+      .verticalScrollBarAccess(this.dataRnWeb.descriptor?.props.showsVerticalScrollIndicator)
+      .overviewModeAccess(this.dataRnWeb.descriptor?.props.scalesPageToFit)
+      .textZoomRatio(this.dataRnWeb.descriptor?.props.textZoom)
+      .cacheMode(this.dataRnWeb.cacheMode)
+      .domStorageAccess(this.dataRnWeb.descriptor?.props.domStorageEnabled)
+      .zoomAccess(this.dataRnWeb.descriptor?.props.scalesPageToFit)
+      .overScrollMode(OverScrollMode.NEVER)
+      .onPageBegin((e)=>{
+        // this.dataRnWeb.controller.onActive()
+      })
+      .onProgressChange(
+        (e:onProgressChangeEvent)=>{
+          Logger.debug("ljc","web onProgressChange")
+          this.dataRnWeb.onProgressChange?.(e)
+        }
+      )
+      .onPageEnd(
+        (e)=>{
+          Logger.debug("ljc","web onPageEnd")
+          this.dataRnWeb.onPageEnd?.()
+          // data.onProgressChange?.({newProgress:1000})
+        }
+      )
+      .onErrorReceive((e:onErrorReceiveEvent)=>{
+        Logger.debug("ljc","web onErrorReceive")
+        this.dataRnWeb.onErrorReceive?.(e)
+      }
+      )
+      .onLoadIntercept((e)=>{
+        Logger.debug("ljc","web onErrorReceive")
+        return this.dataRnWeb.onLoadIntercept?.(e)
+      })
+    .onControllerAttached(()=>{
+      this.dataRnWeb.onControllerAttached?.()
+    })
+  }
+}
+
 let wrap = wrapBuilder<Data[]>(WebBuilder);
 
 // 用于控制和反馈对应的NodeContainer上的节点的行为，需要与NodeContainer一起使用
@@ -135,7 +148,7 @@ export class myNodeController extends NodeController {
     // 创建动态Web组件
     this.rootnode.build(wrap, {
       controller:control,
-      descriptor:null,
+      descriptor: undefined,
       cacheMode:CacheMode.Default,
       // onProgressChange:()=>{},
       // onPageEnd:()=>{},
@@ -149,6 +162,8 @@ export class myNodeController extends NodeController {
   updateNode(data:Data){
     this.rootnode?.update(data)
     Logger.debug("ljc","updateNode")
+    // this.rebuild()
+    // this.rootnode?.build(wrap, data)
   }
 }
 // 创建Map保存所需要的NodeController
