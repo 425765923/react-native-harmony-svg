@@ -115,6 +115,7 @@ export struct WebView {
   private webNodeId:string|undefined = undefined
 
   aboutToAppear() {
+    Logger.debug(TAG,`aboutToAppear tag:${this.tag}`)
     this.descriptor = this.ctx.descriptorRegistry.getDescriptor<WebViewViewDescriptor>(this.tag)
     this.unregisterDescriptorChangesListener = this.ctx.descriptorRegistry.subscribeToDescriptorChanges(this.tag,
       (newDescriptor) => {
@@ -138,6 +139,19 @@ export struct WebView {
       this.rnViewAttributeModifier = new RNViewBaseAttributeModifier(descriptorWrapper, this.ctx)
     }
     this.webNodeId = getFreeWebId()
+    // 预加载场景无法进入onControllerAttached
+    if (this.webNodeId !== undefined) {
+      Logger.debug(TAG,`The current component is a preloaded webview`)
+      let controller = getNWeb(this.webNodeId)?.getController()
+      if (controller) {
+        this.controller = controller
+        this.controllerAttached = true;
+      }
+      if (!this.hasRegisterJavaScriptProxy) {
+        this.registerPostMessage()
+      }
+      this.descriptorChangesCallback(true)
+    }
   }
 
   descriptorChangesCallback(isForceUpdate:boolean = false){
@@ -167,9 +181,7 @@ export struct WebView {
       Logger.debug(TAG, `[RNOH] newDescriptor props update uri: ` + this.source.uri);
       this.url = this.source.uri
       if (this.controllerAttached) {
-        setTimeout(()=>{
-          this.controller.loadUrl(this.descriptor.props.newSource.uri)
-        },100)
+        this.controller.loadUrl(this.descriptor.props.newSource.uri)
       }
     }
   }
@@ -182,8 +194,7 @@ export struct WebView {
       onProgressChange:(e:onProgressChangeEvent)=>this.onProgressChange(e),
       onPageEnd:()=>this.onPageEnd(),
       onErrorReceive:(e:onErrorReceiveEvent)=>this.onErrorReceive(e),
-      onLoadIntercept:(e:onLoadInterceptEvent)=>this.onLoadIntercept(e),
-      onControllerAttached:()=>this.onControllerAttached(),
+      onLoadIntercept:(e:onLoadInterceptEvent)=>this.onLoadIntercept(e)
     } as Data
     if (this.webNodeId) {
       getNWeb(this.webNodeId)?.updateNode(nodeParams)
@@ -195,6 +206,10 @@ export struct WebView {
     if (event) {
       this.progress = event.newProgress
       Logger.debug(TAG, "[RNOH] event progress: " + event.newProgress)
+      // todo 待预加载场景onPageEnd正常后删除
+      if (this.progress == 100) {
+        this.onPageEnd()
+      }
     }
   }
 
@@ -310,6 +325,7 @@ export struct WebView {
       this.controller.registerJavaScriptProxy(bridge, JAVASCRIPT_INTERFACE, ["postMessage"])
       this.controller.refresh()
       this.hasRegisterJavaScriptProxy = true
+      Logger.debug(TAG,`registerJavaScriptProxy finish`)
     }
   }
 
@@ -369,6 +385,7 @@ export struct WebView {
   }
 
   registerCommandCallback() {
+    Logger.debug(TAG,`registerCommandCallback `)
     this.cleanupCommandCallback = this.ctx.componentCommandReceiver.registerCommandCallback(
       this.tag,
       (command, args: string[]) => {
@@ -422,6 +439,7 @@ export struct WebView {
   }
 
   onLoadingFinish() {
+    Logger.debug(TAG,`emit onLoadingFinish `)
     this.ctx.rnInstance.emitComponentEvent(this.descriptor.tag, WEB_VIEW, {
       type: "onLoadingFinish",
       url: this.controller.getUrl(),
@@ -436,6 +454,7 @@ export struct WebView {
   }
 
   onLoadingError(code: number, description: string) {
+    Logger.debug(TAG,`emit onLoadingError `)
     this.ctx.rnInstance.emitComponentEvent(this.descriptor.tag, WEB_VIEW, {
       type: "onLoadingError",
       url: this.controller.getUrl(),
@@ -451,6 +470,7 @@ export struct WebView {
   }
 
   onShouldStartLoadWithRequest() {
+    Logger.debug(TAG,`emit onShouldStartLoadWithRequest `)
     this.ctx.rnInstance.emitComponentEvent(this.descriptor.tag, WEB_VIEW, {
       type: "onShouldStartLoadWithRequest",
       url: this.controller.getUrl(),
@@ -466,6 +486,7 @@ export struct WebView {
   }
 
   onShouldStartLoadCallFunction(lockIdentifier: number, data: WebResourceRequest) {
+    Logger.debug(TAG,`emit onShouldStartLoadCallFunction `)
     this.ctx.rnInstance.emitComponentEvent(this.descriptor.tag, WEB_VIEW, {
       type: "onShouldStartLoadWithRequest",
       url: data.getRequestUrl(),
@@ -481,6 +502,7 @@ export struct WebView {
   }
 
   runInjectedJavaScript() {
+    Logger.debug(TAG,`runInjectedJavaScript `)
     let injectedJS = this.descriptor.props.injectedJavaScript
     if (this.javaScriptEnable && injectedJS != "" && this.controllerAttached) {
       try {
@@ -498,22 +520,11 @@ export struct WebView {
   }
 
   build() {
-    // RNViewBase({ ctx: this.ctx, tag: this.tag }) {
     Stack() {
       if (this.webNodeId){
         NodeContainer(getNWeb(this.webNodeId))
-          .height(this.descriptor.layoutMetrics.frame.size.width)
-          .width(this.descriptor.layoutMetrics.frame.size.width)
           .onAppear(()=>{
-            if (this.webNodeId !== undefined) {
-              let controller = getNWeb(this.webNodeId)?.getController()
-              if (controller) {
-                this.controller = controller
-                this.controllerAttached = true;
-              }
-            }
-            this.onControllerAttached()
-            this.descriptorChangesCallback(true)
+            Logger.debug(TAG,"NodeContainer onAppear")
           })
       }else {
         Web({ src: this.source.uri, controller: this.controller,renderMode: this.renderMode })

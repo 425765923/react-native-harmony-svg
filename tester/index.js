@@ -15,7 +15,7 @@ import autoheightDemo from './webviewDemo/autoheight'
 
 // AppRegistry.registerComponent(appName, () => App);
 // AppRegistry.registerComponent(appName, () => SVGDemo);
-// AppRegistry.registerComponent(appName, () => autoheightDemo);
-AppRegistry.registerComponent(appName, () => webviewDemo);
+AppRegistry.registerComponent(appName, () => autoheightDemo);
+// AppRegistry.registerComponent(appName, () => webviewDemo);
 
 // AppRegistry.registerComponent(appName, () => sqlitedemo);
