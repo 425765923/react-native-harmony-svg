@@ -141,7 +141,7 @@ export struct WebView {
     this.webNodeId = getFreeWebId()
     // 预加载场景无法进入onControllerAttached
     if (this.webNodeId !== undefined) {
-      Logger.debug(TAG,`The current component is a preloaded webview`)
+      Logger.debug(TAG,`The current component is a preloaded webview. id:${this.webNodeId}`)
       let controller = getNWeb(this.webNodeId)?.getController()
       if (controller) {
         this.controller = controller
@@ -151,11 +151,13 @@ export struct WebView {
         this.registerPostMessage()
       }
       this.descriptorChangesCallback(true)
+    } else {
+      Logger.debug(TAG,`The current component is not a preloaded webview`)
     }
   }
 
   descriptorChangesCallback(isForceUpdate:boolean = false){
-    Logger.debug(TAG, `[RNOH] newDescriptor props uri, ${JSON.stringify(this.descriptor.props.newSource.uri)}`);
+    Logger.debug(TAG, `[RNOH] descriptorChangesCallback,tag:${this.tag},props: ${JSON.stringify(this.descriptor.props)}`);
     this.cacheMode = this.descriptor.props.cacheEnabled ? this.transCacheMode(this.descriptor.props.cacheMode) : CacheMode.Online;
     this.javaScriptEnable = this.descriptor.props.javaScriptEnabled;
     this.source = this.descriptor.props.newSource
@@ -191,7 +193,7 @@ export struct WebView {
       controller:this.controller ,
       cacheMode:this.cacheMode,
       descriptor:this.descriptor,
-      onProgressChange:(e:onProgressChangeEvent)=>this.onProgressChange(e),
+        onProgressChange:(e:onProgressChangeEvent)=>this.onProgressChange(e),
       onPageEnd:()=>this.onPageEnd(),
       onErrorReceive:(e:onErrorReceiveEvent)=>this.onErrorReceive(e),
       onLoadIntercept:(e:onLoadInterceptEvent)=>this.onLoadIntercept(e)
@@ -206,10 +208,6 @@ export struct WebView {
     if (event) {
       this.progress = event.newProgress
       Logger.debug(TAG, "[RNOH] event progress: " + event.newProgress)
-      // todo 待预加载场景onPageEnd正常后删除
-      if (this.progress == 100) {
-        this.onPageEnd()
-      }
     }
   }
 
@@ -313,7 +311,7 @@ export struct WebView {
     if (this.messagingEnabled) {
       let bridge: RNCWebViewBridge = {
         postMessage: (data: string) => {
-          Logger.debug(TAG, `[RNOH] bridge postMessage,  ${JSON.stringify(data)}`);
+          Logger.debug(TAG, `[RNOH] bridge postMessage,tag:${this.tag},message: ${JSON.stringify(data)}`);
           if (this.controller != null) {
             let result: WebViewEventParams = this.createWebViewEvent("onMessage")
             result.data = data
@@ -348,9 +346,9 @@ export struct WebView {
   }
 
   aboutToDisappear() {
+    Logger.debug(TAG, `[RNOH] aboutToDisappear tag:${this.tag}`)
     this.cleanupCommandCallback?.()
     this.unregisterDescriptorChangesListener?.()
-    Logger.debug(TAG, `[RNOH] aboutToDisappear`)
     try {
       this.controller.deleteJavaScriptRegister(JAVASCRIPT_INTERFACE)
       this.controller.refresh()

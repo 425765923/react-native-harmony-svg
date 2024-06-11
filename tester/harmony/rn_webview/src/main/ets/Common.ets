@@ -73,7 +73,7 @@ let wrap = wrapBuilder<Data[]>(WebBuilder);
 // 用于控制和反馈对应的NodeContainer上的节点的行为，需要与NodeContainer一起使用
 export class myNodeController extends NodeController {
   private rootnode: BuilderNode<Data[]> | null = null;
-  private isMount = false;
+  private isMounted = false;
   private id:string = "1";
   // 必须要重写的方法，用于构建节点数、返回节点挂载在对应NodeContainer中
   // 在对应NodeContainer创建的时候调用、或者通过rebuild方法调用刷新
@@ -93,24 +93,24 @@ export class myNodeController extends NodeController {
 
   // 当controller对应的NodeContainer在Appear的时候进行回调
   aboutToAppear() {
-    this.isMount = true
+    this.isMounted = true
     this.getController()?.onActive()
     Logger.debug("ljc aboutToAppear")
   }
 
   // 当controller对应的NodeContainer在Disappear的时候进行回调
   aboutToDisappear() {
-    this.isMount = false
+    this.isMounted = false
     this.getController()?.onInactive()
     Logger.debug("ljc aboutToDisappear")
   }
 
-  setMount(isMount:boolean){
-    this.isMount = isMount
+  setMount(isMounted:boolean){
+    this.isMounted = isMounted
   }
 
   getMount(){
-    return this.isMount;
+    return this.isMounted;
   }
 
   getController():WebviewController|undefined{
@@ -118,7 +118,7 @@ export class myNodeController extends NodeController {
   }
 
   release():void{
-    this.isMount = false
+    this.isMounted = false
     this.getController()?.onInactive()
   }
 
@@ -155,7 +155,7 @@ let NodeMap:Map<string, myNodeController | undefined> = new Map();
 let controllerMap:Map<string, WebviewController | undefined> = new Map();
 
 // 初始化需要UIContext 需在Ability获取
-export const createNWeb = async (uiContext: UIContext,count: number) => {
+export const createNWeb = (uiContext: UIContext,count: number) => {
   let nodeMapSize = NodeMap.size
   while (nodeMapSize < count && nodeMapSize < MAX_WEB_NODE_COUNT){
     let id = (nodeMapSize + 1).toString();
@@ -182,6 +182,7 @@ export const getFreeWebId = () : string|undefined => {
   NodeMap.forEach((nodeController ,id)=>{
     if (!nodeController?.getMount() && !webId) {
       nodeController?.setMount(true)
+      controllerMap.get(id)?.onActive()
       webId = id;
       return;
     }
