@@ -110,8 +110,9 @@ export class myNodeController extends NodeController {
 
   // 当controller对应的NodeContainer在Disappear的时候进行回调
   aboutToDisappear() {
-    this.isMounted = false
-    this.getController()?.onInactive()
+    this.release()
+    // this.isMounted = false
+    // this.getController()?.onInactive()
     Logger.debug("ljc aboutToDisappear")
   }
 
@@ -127,7 +128,9 @@ export class myNodeController extends NodeController {
     return controllerMap.get(this.id);
   }
 
-  release(): void {
+  private release(): void {
+    this.getController()?.loadData('','text/html', 'UTF-8')
+    this.getController()?.clearHistory()
     this.isMounted = false
     this.getController()?.onInactive()
   }
