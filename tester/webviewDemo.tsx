@@ -60,7 +60,9 @@ const App = () => {
         <Button title="+ Width" onPress={increaseWidth} />
         <Button title="- Width" onPress={decreaseWidth} />
         <Button title="change url" onPress={()=>setSource("httpss://www.baidu.com/" + Math.random())} />
-        <Button title="change url" onPress={()=>onReloadPress()} />
+        {/* <Button title="change url" onPress={()=>onReloadPress()} /> */}
+        <Button title="change url" onPress={()=>setSource("https://www.baidu.com/" )} />
+
       </View>
     </View>
   );
