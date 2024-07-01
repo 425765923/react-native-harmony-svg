@@ -105,7 +105,7 @@ export class myNodeController extends NodeController {
   aboutToAppear() {
     this.isMounted = true
     this.getController()?.onActive()
-    Logger.debug("ljc aboutToAppear")
+    Logger.debug(" aboutToAppear")
   }
 
   // 当controller对应的NodeContainer在Disappear的时候进行回调
@@ -113,7 +113,7 @@ export class myNodeController extends NodeController {
     this.release()
     // this.isMounted = false
     // this.getController()?.onInactive()
-    Logger.debug("ljc aboutToDisappear")
+    Logger.debug(" aboutToDisappear")
   }
 
   setMount(isMounted: boolean) {
